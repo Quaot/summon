@@ -17,8 +17,9 @@ void fire( DWORD key ) {
     PostMessageW( target_window, target_message, key, 0 );
 }
 
-// A modifier fires when it is pressed and released with no other key or mouse button in
-// between. Any other bound key fires on press, and both its press and release are swallowed.
+// A modifier fires when it is pressed and released with no other key or mouse button press in
+// between; releases never cancel a tap. Any other bound key fires on press, and both its press
+// and release are swallowed. docs\spec.md has the full rules.
 bool handle( DWORD key, bool down ) {
     if ( key >= 256 || !bound[ key ] ) {
         if ( down ) armed_key = 0;
@@ -28,8 +29,8 @@ bool handle( DWORD key, bool down ) {
     held[ key ] = down;
     if ( is_modifier( key ) ) {
         if ( down && !repeat ) armed_key = key;
-        if ( !down ) {
-            if ( armed_key == key ) fire( key );
+        if ( !down && armed_key == key ) {
+            fire( key );
             armed_key = 0;
         }
         return false;
@@ -95,12 +96,15 @@ bool handle_keyboard_event( WPARAM message, const KBDLLHOOKSTRUCT &key ) {
     return handle( key.vkCode, message == WM_KEYDOWN || message == WM_SYSKEYDOWN );
 }
 
-// Movement never cancels a tap; any other mouse input, apart from a bound button, does.
+// Left and right presses and the wheel cancel a tap; movement and releases do not.
 bool handle_mouse_event( WPARAM message, const MSLLHOOKSTRUCT &mouse ) {
-    if ( message == WM_MOUSEMOVE ) return false;
+    if ( mouse.flags & LLMHF_INJECTED ) return false;
     DWORD key = mouse_button_key( message, &mouse );
-    if ( key && !( mouse.flags & LLMHF_INJECTED ) ) return handle( key, is_button_down( message ) );
-    armed_key = 0;
+    if ( key ) return handle( key, is_button_down( message ) );
+    switch ( message ) {
+    case WM_LBUTTONDOWN: case WM_RBUTTONDOWN: case WM_MOUSEWHEEL: case WM_MOUSEHWHEEL:
+        armed_key = 0;
+    }
     return false;
 }
 

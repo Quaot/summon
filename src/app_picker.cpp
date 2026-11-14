@@ -8,9 +8,12 @@ using std::vector;
 
 namespace {
 
-enum control_id { search_box = 101, app_list, ok_button, cancel_button };
+enum control_id { search_box = 101, app_list, ok_button, cancel_button, browse_button };
+
+const int chose_browsed = -2;
 
 vector<installed_app> apps;
+installed_app browsed;
 HWND search = nullptr;
 HWND list = nullptr;
 int chosen_index = -1;
@@ -60,6 +63,10 @@ LRESULT CALLBACK picker_proc( HWND hwnd, UINT message, WPARAM wparam, LPARAM lpa
         if ( id == app_list && code == LBN_DBLCLK ) accept( hwnd );
         if ( id == ok_button || id == IDOK ) accept( hwnd );
         if ( id == cancel_button || id == IDCANCEL ) DestroyWindow( hwnd );
+        if ( id == browse_button && browse_for_program( hwnd, browsed ) ) {
+            chosen_index = chose_browsed;
+            DestroyWindow( hwnd );
+        }
         return 0;
     }
     if ( message == WM_CLOSE ) {
@@ -91,6 +98,7 @@ bool pick_app( HWND owner, installed_app &chosen ) {
                         font, WS_EX_CLIENTEDGE );
     HWND ok = add_control( window, L"BUTTON", L"Choose", WS_TABSTOP | BS_DEFPUSHBUTTON, ok_button, font );
     HWND cancel = add_control( window, L"BUTTON", L"Cancel", WS_TABSTOP, cancel_button, font );
+    HWND browse = add_control( window, L"BUTTON", L"Browse...", WS_TABSTOP, browse_button, font );
 
     int search_height = px( 24 );
     MoveWindow( search, px( margin ), px( margin ), px( width - 2 * margin ), search_height, FALSE );
@@ -99,12 +107,17 @@ bool pick_app( HWND owner, installed_app &chosen ) {
     MoveWindow( list, px( margin ), list_top, px( width - 2 * margin ), buttons_top - px( 10 ) - list_top, FALSE );
     MoveWindow( ok, px( width - margin - 2 * button_width - 8 ), buttons_top, px( button_width ), px( button_height ), FALSE );
     MoveWindow( cancel, px( width - margin - button_width ), buttons_top, px( button_width ), px( button_height ), FALSE );
+    MoveWindow( browse, px( margin ), buttons_top, px( button_width ), px( button_height ), FALSE );
 
     fill_list();
     SetFocus( search );
     run_modal( window, owner );
     DeleteObject( font );
 
+    if ( chosen_index == chose_browsed ) {
+        chosen = browsed;
+        return true;
+    }
     if ( chosen_index < 0 ) return false;
     chosen = apps[ chosen_index ];
     return true;

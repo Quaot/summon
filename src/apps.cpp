@@ -38,6 +38,47 @@ wstring take( wchar_t *text ) {
 
 }  // namespace
 
+bool browse_for_program( HWND owner, installed_app &chosen ) {
+    IFileOpenDialog *dialog = nullptr;
+    if ( FAILED( CoCreateInstance( CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &dialog ) ) ) ) return false;
+    COMDLG_FILTERSPEC types[] = { { L"Programs and shortcuts", L"*.exe;*.lnk" } };
+    dialog->SetFileTypes( 1, types );
+    dialog->SetTitle( L"Choose a program" );
+    FILEOPENDIALOGOPTIONS options = 0;
+    dialog->GetOptions( &options );
+    dialog->SetOptions( options | FOS_NODEREFERENCELINKS | FOS_FILEMUSTEXIST );
+
+    wstring path;
+    IShellItem *item = nullptr;
+    if ( SUCCEEDED( dialog->Show( owner ) ) && SUCCEEDED( dialog->GetResult( &item ) ) ) {
+        wchar_t *text = nullptr;
+        if ( SUCCEEDED( item->GetDisplayName( SIGDN_FILESYSPATH, &text ) ) ) path = take( text );
+        item->Release();
+    }
+    dialog->Release();
+    if ( path.empty() ) return false;
+
+    size_t slash = path.find_last_of( L'\\' );
+    size_t dot = path.find_last_of( L'.' );
+    chosen.name = path.substr( slash + 1, dot - slash - 1 );
+    chosen.app_id = path;
+    chosen.exe_path = path;
+    if ( _wcsicmp( path.c_str() + dot, L".lnk" ) == 0 ) {
+        IShellLinkW *link = nullptr;
+        IPersistFile *file = nullptr;
+        wchar_t target[ MAX_PATH * 2 ] = L"";
+        if ( SUCCEEDED( CoCreateInstance( CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &link ) ) ) ) {
+            if ( SUCCEEDED( link->QueryInterface( IID_PPV_ARGS( &file ) ) ) ) {
+                if ( SUCCEEDED( file->Load( path.c_str(), STGM_READ ) ) ) link->GetPath( target, MAX_PATH * 2, nullptr, 0 );
+                file->Release();
+            }
+            link->Release();
+        }
+        chosen.exe_path = target;
+    }
+    return true;
+}
+
 vector<installed_app> list_installed_apps() {
     vector<installed_app> apps;
     IShellItem *folder = nullptr;

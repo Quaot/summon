@@ -66,8 +66,9 @@ bool is_main_window( HWND hwnd ) {
 // Discord. The window's own ID and the process checks catch the rest.
 bool belongs_to( HWND hwnd, const binding &app ) {
     if ( !is_main_window( hwnd ) ) return false;
-    return same_text( taskbar_app_id( hwnd ), app.app_id ) || same_text( window_app_id( hwnd ), app.app_id ) ||
-           process_matches( hwnd, app );
+    wstring taskbar_id = taskbar_app_id( hwnd );
+    return same_text( taskbar_id, app.app_id ) || same_text( taskbar_id, app.exe_path ) ||
+           same_text( window_app_id( hwnd ), app.app_id ) || process_matches( hwnd, app );
 }
 
 struct search {
@@ -144,8 +145,10 @@ void bring_to_front( HWND hwnd ) {
     SetForegroundWindow( hwnd );
 }
 
+// Programs chosen with Browse have a file path as their app ID and open directly.
 void launch( const binding &app ) {
-    wstring target = L"shell:AppsFolder\\" + app.app_id;
+    bool is_file = app.app_id.find( L":\\" ) == 1;
+    wstring target = is_file ? app.app_id : L"shell:AppsFolder\\" + app.app_id;
     ShellExecuteW( nullptr, L"open", target.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
 }
 

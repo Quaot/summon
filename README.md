@@ -16,7 +16,7 @@ build.cmd
 
 Run `summon.exe`. A teal S appears among the tray icons by the clock; Windows may tuck it under the ^ arrow, and you can drag it out to keep it in view. Click it to open the settings.
 
-- **Add** asks for an app, chosen from the same list as the Start menu, then for its key.
+- **Add** asks for an app, chosen from the same list as the Start menu, then for its key. For a program missing from that list, such as one with only a desktop shortcut, use **Browse** and pick its .exe or shortcut.
 - **Change key** picks a new key for the selected app. Double-clicking a row does the same.
 - **Remove** deletes the selected row, as does the Delete key.
 - **Start with Windows** puts a shortcut in your Startup folder.

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <windows.h>
+
 #include <string>
 #include <vector>
 
@@ -14,3 +16,8 @@ struct installed_app {
 
 // Every app, sorted by name.
 std::vector<installed_app> list_installed_apps();
+
+// Asks for a program or shortcut that is missing from the Start menu. A shortcut becomes the
+// app ID, so it opens with its own folder and arguments; the program it points to identifies
+// the app's windows.
+bool browse_for_program( HWND owner, installed_app &chosen );

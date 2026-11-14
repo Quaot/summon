@@ -13,3 +13,7 @@ bool move_to_current_desktop( HWND hwnd );
 
 // Empty for hidden windows, which have no taskbar entry.
 std::wstring taskbar_app_id( HWND hwnd );
+
+// Whether Explorer answers to the interface IDs above on this Windows build. False after a
+// Windows update that changes them.
+bool desktop_interfaces_work();

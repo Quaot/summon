@@ -154,18 +154,34 @@ void launch( const binding &app ) {
 
 }  // namespace
 
+toggle_action choose_action( const window_state &state ) {
+    if ( !state.found ) return toggle_action::launch;
+    if ( state.visible && state.in_front && !state.minimised && state.on_current_desktop ) return toggle_action::hide;
+    return toggle_action::bring_here;
+}
+
+bool window_belongs_to( HWND hwnd, const binding &app ) {
+    return belongs_to( hwnd, app );
+}
+
 void toggle_app( const binding &app ) {
     HWND window = find_window( app );
-    if ( !window ) {
+    window_state state = {};
+    if ( window ) {
+        state = { true, IsWindowVisible( window ) != FALSE, GetForegroundWindow() == window, IsIconic( window ) != FALSE,
+                  on_current_desktop( window ) };
+    }
+    toggle_action action = choose_action( state );
+    if ( action == toggle_action::launch ) {
         launch( app );
         return;
     }
-    bool visible = IsWindowVisible( window );
-    if ( visible && GetForegroundWindow() == window && !IsIconic( window ) && on_current_desktop( window ) ) {
+    if ( action == toggle_action::hide ) {
         ShowWindow( window, SW_HIDE );
         hidden_windows[ app.app_id ] = { window, process_of( window ) };
         return;
     }
+    bool visible = state.visible;
 
     // Some apps, Claude among them, put themselves back on their old desktop when shown. So the
     // window is shown without activating, moved here, and only then brought forward;

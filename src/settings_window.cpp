@@ -64,14 +64,12 @@ const int key_was_free = -1;
 // A key can open only one app. If another row has the key, the user chooses whether to move
 // it; the result is key_kept, key_was_free, or the row the key was taken from.
 int free_key( DWORD key, const wstring &key_name, const wstring &app_name, int keep ) {
-    for ( size_t index = 0; index < bindings.size(); index++ ) {
-        if ( static_cast<int>( index ) == keep || bindings[ index ].key != key ) continue;
-        wstring question = key_name + L" already opens " + bindings[ index ].app_name + L". Use it for " + app_name + L" instead?";
-        if ( MessageBoxW( window, question.c_str(), L"Summon", MB_YESNO | MB_ICONQUESTION ) != IDYES ) return key_kept;
-        bindings.erase( bindings.begin() + index );
-        return static_cast<int>( index );
-    }
-    return key_was_free;
+    int row = row_using_key( bindings, key, keep );
+    if ( row < 0 ) return key_was_free;
+    wstring question = key_name + L" already opens " + bindings[ row ].app_name + L". Use it for " + app_name + L" instead?";
+    if ( MessageBoxW( window, question.c_str(), L"Summon", MB_YESNO | MB_ICONQUESTION ) != IDYES ) return key_kept;
+    bindings.erase( bindings.begin() + row );
+    return row;
 }
 
 void add_binding() {

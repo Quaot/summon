@@ -10,8 +10,6 @@
 
 using std::vector;
 
-namespace {
-
 // Desktop apps without a property for their program file have an app ID such as
 // "{6D809377-6AF0-444B-8957-A3773F02200E}\Notepad++\notepad++.exe", where the GUID names a
 // known folder such as Program Files.
@@ -29,6 +27,8 @@ wstring path_from_app_id( const wstring &app_id ) {
     CoTaskMemFree( folder );
     return path;
 }
+
+namespace {
 
 wstring take( wchar_t *text ) {
     wstring result = text ? text : L"";

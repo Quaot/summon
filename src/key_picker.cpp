@@ -3,6 +3,20 @@
 #include "hooks.h"
 #include "ui.h"
 
+wstring name_of_key( const KBDLLHOOKSTRUCT &key ) {
+    LONG code = static_cast<LONG>( key.scanCode << 16 );
+    if ( key.flags & LLKHF_EXTENDED ) code |= 1 << 24;
+    wchar_t name[ 64 ] = L"";
+    if ( key.scanCode && GetKeyNameTextW( code, name, 64 ) > 0 ) return name;
+    return L"Key " + std::to_wstring( key.vkCode );
+}
+
+wstring name_of_mouse_button( DWORD key ) {
+    if ( key == VK_MBUTTON ) return L"Middle mouse button";
+    if ( key == VK_XBUTTON1 ) return L"Mouse back button";
+    return L"Mouse forward button";
+}
+
 namespace {
 
 const UINT picked_message = WM_APP + 10;
@@ -12,20 +26,6 @@ DWORD picked_key = 0;
 wstring picked_name;
 DWORD swallow_release = 0;
 bool accepted = false;
-
-wstring key_name( const KBDLLHOOKSTRUCT *key ) {
-    LONG code = static_cast<LONG>( key->scanCode << 16 );
-    if ( key->flags & LLKHF_EXTENDED ) code |= 1 << 24;
-    wchar_t name[ 64 ] = L"";
-    if ( GetKeyNameTextW( code, name, 64 ) > 0 ) return name;
-    return L"Key " + std::to_wstring( key->vkCode );
-}
-
-wstring mouse_name( DWORD key ) {
-    if ( key == VK_MBUTTON ) return L"Middle mouse button";
-    if ( key == VK_XBUTTON1 ) return L"Mouse back button";
-    return L"Mouse forward button";
-}
 
 // The picker's hooks are installed after the background hooks, so they run first and the
 // chosen key never reaches the background hooks or any other program.
@@ -38,7 +38,7 @@ LRESULT CALLBACK keyboard_hook( int code, WPARAM message, LPARAM data ) {
             swallow_release = key->vkCode;
             if ( key->vkCode != VK_ESCAPE ) {
                 picked_key = key->vkCode;
-                picked_name = key_name( key );
+                picked_name = name_of_key( *key );
             }
             PostMessageW( picker_window, picked_message, key->vkCode != VK_ESCAPE, 0 );
             return 1;
@@ -55,7 +55,7 @@ LRESULT CALLBACK mouse_hook( int code, WPARAM message, LPARAM data ) {
         if ( key && is_button_down( message ) && swallow_release == 0 ) {
             swallow_release = key;
             picked_key = key;
-            picked_name = mouse_name( key );
+            picked_name = name_of_mouse_button( key );
             PostMessageW( picker_window, picked_message, TRUE, 0 );
             return 1;
         }

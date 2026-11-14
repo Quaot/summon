@@ -14,6 +14,10 @@ struct installed_app {
     wstring exe_path;
 };
 
+// The program path an app ID names, such as "{known folder GUID}\Notepad++\notepad++.exe", or
+// empty when the ID is not a path to a program.
+wstring path_from_app_id( const wstring &app_id );
+
 // Every app, sorted by name.
 std::vector<installed_app> list_installed_apps();
 

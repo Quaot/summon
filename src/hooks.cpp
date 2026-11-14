@@ -6,9 +6,10 @@
 
 namespace {
 
+// The hook thread reads these and the main thread resets them, so they are atomic.
 std::atomic<bool> bound[ 256 ];
-bool held[ 256 ];
-DWORD armed_key = 0;
+std::atomic<bool> held[ 256 ];
+std::atomic<DWORD> armed_key{ 0 };
 HWND target_window = nullptr;
 UINT target_message = 0;
 
@@ -39,26 +40,12 @@ bool handle( DWORD key, bool down ) {
 }
 
 LRESULT CALLBACK keyboard_hook( int code, WPARAM message, LPARAM data ) {
-    if ( code == HC_ACTION ) {
-        const KBDLLHOOKSTRUCT *key = reinterpret_cast<const KBDLLHOOKSTRUCT *>( data );
-        if ( !( key->flags & LLKHF_INJECTED ) ) {
-            bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
-            if ( handle( key->vkCode, down ) ) return 1;
-        }
-    }
+    if ( code == HC_ACTION && handle_keyboard_event( message, *reinterpret_cast<const KBDLLHOOKSTRUCT *>( data ) ) ) return 1;
     return CallNextHookEx( nullptr, code, message, data );
 }
 
 LRESULT CALLBACK mouse_hook( int code, WPARAM message, LPARAM data ) {
-    if ( code == HC_ACTION && message != WM_MOUSEMOVE ) {
-        const MSLLHOOKSTRUCT *mouse = reinterpret_cast<const MSLLHOOKSTRUCT *>( data );
-        DWORD key = mouse_button_key( message, mouse );
-        if ( key && !( mouse->flags & LLMHF_INJECTED ) ) {
-            if ( handle( key, is_button_down( message ) ) ) return 1;
-        } else {
-            armed_key = 0;
-        }
-    }
+    if ( code == HC_ACTION && handle_mouse_event( message, *reinterpret_cast<const MSLLHOOKSTRUCT *>( data ) ) ) return 1;
     return CallNextHookEx( nullptr, code, message, data );
 }
 
@@ -91,14 +78,34 @@ bool is_button_down( WPARAM message ) {
 
 void set_bound_keys( const std::vector<DWORD> &keys ) {
     for ( std::atomic<bool> &entry : bound ) entry = false;
+    for ( std::atomic<bool> &entry : held ) entry = false;
+    armed_key = 0;
     for ( DWORD key : keys ) {
         if ( key < 256 ) bound[ key ] = true;
     }
 }
 
-// The hooks sit on their own thread so a slow app window never delays typing.
-HANDLE start_hooks( HWND target, UINT message, DWORD *thread_id ) {
+void set_hook_target( HWND target, UINT message ) {
     target_window = target;
     target_message = message;
+}
+
+bool handle_keyboard_event( WPARAM message, const KBDLLHOOKSTRUCT &key ) {
+    if ( key.flags & LLKHF_INJECTED ) return false;
+    return handle( key.vkCode, message == WM_KEYDOWN || message == WM_SYSKEYDOWN );
+}
+
+// Movement never cancels a tap; any other mouse input, apart from a bound button, does.
+bool handle_mouse_event( WPARAM message, const MSLLHOOKSTRUCT &mouse ) {
+    if ( message == WM_MOUSEMOVE ) return false;
+    DWORD key = mouse_button_key( message, &mouse );
+    if ( key && !( mouse.flags & LLMHF_INJECTED ) ) return handle( key, is_button_down( message ) );
+    armed_key = 0;
+    return false;
+}
+
+// The hooks sit on their own thread so a slow app window never delays typing.
+HANDLE start_hooks( HWND target, UINT message, DWORD *thread_id ) {
+    set_hook_target( target, message );
     return CreateThread( nullptr, 0, hook_thread, nullptr, 0, thread_id );
 }

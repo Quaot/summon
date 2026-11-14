@@ -46,8 +46,16 @@ wstring exe_folder() {
 // settings.txt has one binding per line: key code | key name | app name | app id | exe path.
 // Older files from Claude Toggle held a single "key = 163" line for Claude.
 vector<binding> load_bindings() {
+    return load_bindings_from( settings_path() );
+}
+
+bool save_bindings( const vector<binding> &bindings ) {
+    return save_bindings_to( settings_path(), bindings );
+}
+
+vector<binding> load_bindings_from( const wstring &path ) {
     vector<binding> bindings;
-    FILE *file = _wfopen( settings_path().c_str(), L"r, ccs=UTF-8" );
+    FILE *file = _wfopen( path.c_str(), L"r, ccs=UTF-8" );
     if ( !file ) return bindings;
     wchar_t buffer[ 2048 ];
     binding old_claude;
@@ -79,8 +87,8 @@ vector<binding> load_bindings() {
     return bindings;
 }
 
-bool save_bindings( const vector<binding> &bindings ) {
-    FILE *file = _wfopen( settings_path().c_str(), L"w, ccs=UTF-8" );
+bool save_bindings_to( const wstring &path, const vector<binding> &bindings ) {
+    FILE *file = _wfopen( path.c_str(), L"w, ccs=UTF-8" );
     if ( !file ) return false;
     fwprintf( file, L"# Summon settings, written by the settings window.\n" );
     fwprintf( file, L"# key code | key name | app name | app id | exe path\n" );
@@ -90,6 +98,13 @@ bool save_bindings( const vector<binding> &bindings ) {
     }
     fclose( file );
     return true;
+}
+
+int row_using_key( const vector<binding> &bindings, DWORD key, int keep ) {
+    for ( size_t index = 0; index < bindings.size(); index++ ) {
+        if ( static_cast<int>( index ) != keep && bindings[ index ].key == key ) return static_cast<int>( index );
+    }
+    return -1;
 }
 
 bool is_modifier( DWORD key ) {

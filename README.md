@@ -12,6 +12,19 @@ Needs MSYS2 with the UCRT64 g++ in `C:\msys64\ucrt64\bin`.
 build.cmd
 ```
 
+## Build and check
+
+Run these from the repo folder, with `.\` in front:
+
+```
+.\build.cmd           builds summon.exe
+.\tests\test.cmd      builds tests\summon_test.exe and runs every check
+```
+
+The checks never touch the screen, keyboard or mouse. Key presses are fake hook events handed straight to the code that handles them, and windows are hidden ones the test program makes for itself. They cover the settings file, the rules for taps and swallowed keys, the choice between starting, hiding and bringing a window here, and how windows are matched to apps. One check asks Explorer whether its virtual desktop interfaces still answer, so it fails after a Windows update that changes them. Another expects Claude in the Start menu's list, so it fails on a machine without Claude.
+
+For any change, write the check first in `tests\test_main.cpp`, see it fail, then change the code until every check passes.
+
 ## Use
 
 Run `summon.exe`. A teal S appears among the tray icons by the clock; Windows may tuck it under the ^ arrow, and you can drag it out to keep it in view. Click it to open the settings.

@@ -49,6 +49,24 @@ struct desktop_manager_internal : IUnknown {
     virtual HRESULT STDMETHODCALLTYPE get_current_desktop( virtual_desktop ** ) = 0;
 };
 
+bool desktop_interfaces_work() {
+    IServiceProvider *shell = nullptr;
+    if ( FAILED( CoCreateInstance( clsid_immersive_shell, nullptr, CLSCTX_LOCAL_SERVER, IID_IServiceProvider,
+                                   reinterpret_cast<void **>( &shell ) ) ) )
+        return false;
+    desktop_manager_internal *manager = nullptr;
+    view_collection *views = nullptr;
+    virtual_desktop *current = nullptr;
+    bool works = SUCCEEDED( shell->QueryService( sid_desktop_manager_internal, iid_desktop_manager_internal, reinterpret_cast<void **>( &manager ) ) ) &&
+                 SUCCEEDED( shell->QueryService( iid_view_collection, iid_view_collection, reinterpret_cast<void **>( &views ) ) ) &&
+                 SUCCEEDED( manager->get_current_desktop( &current ) ) && current;
+    if ( current ) current->Release();
+    if ( views ) views->Release();
+    if ( manager ) manager->Release();
+    shell->Release();
+    return works;
+}
+
 std::wstring taskbar_app_id( HWND hwnd ) {
     std::wstring id;
     IServiceProvider *shell = nullptr;

@@ -2,3 +2,5 @@ summon.exe
 summon.res
 settings.txt
 art/preview.png
+tests/summon_test.exe
+tests/summon_test.res

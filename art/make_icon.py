@@ -1,4 +1,4 @@
-"""Draws summon.ico: a service bell, engraved in ink on red, to sit next to PdfCraft and Crammy."""
+"""Draws summon.ico: a ringing service bell, engraved in ink on green, in the style of PdfCraft and Crammy."""
 
 import math
 from pathlib import Path
@@ -8,7 +8,7 @@ from PIL import Image, ImageChops, ImageDraw
 BIG = 1024
 SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 
-RED = (183, 2, 40)
+GREEN = (30, 88, 54)
 CREAM = (239, 233, 220)
 INK = (11, 11, 12)
 
@@ -18,6 +18,11 @@ DOME_CENTRE = (512, 676)
 DOME_RADII = (296, 276)
 STEM = (492, 300, 532, 408)
 BUTTON = (450, 258, 574, 318)
+
+TILT = 11                # degrees the bell leans back, counterclockwise
+SPEED_LINES = [(560, 40, 150), (640, 10, 140), (720, 60, 170)]   # y, left end, right end, beside the bell
+FRAME = 760              # the drawing's longer side on the 1024 tile
+FRAME_SMALL = 860        # larger at 16 to 24 pixels, where every pixel counts
 
 
 def blank():
@@ -63,11 +68,31 @@ def ellipse_mask(box, offset=(0, 0)):
 
 
 def draw(detailed):
+    """The bell slides in from the left and leans back as it stops, still ringing. The whole
+    drawing is measured and centred on the tile, so the margins stay even."""
+    scene = draw_bell(detailed).rotate(TILT, resample=Image.BICUBIC, center=(512, 718))
+    pen = ImageDraw.Draw(scene)
+    width = 22 if detailed else 48
+    for y, left, right in SPEED_LINES if detailed else SPEED_LINES[1:2]:
+        pen.line((left, y, right, y), fill=INK, width=width)
+        for x in (left, right):
+            pen.ellipse((x - width // 2, y - width // 2, x + width // 2, y + width // 2), fill=INK)
+
+    scene = scene.crop(scene.getbbox())
+    fit = FRAME if detailed else FRAME_SMALL
+    scale = fit / max(scene.size)
+    scene = scene.resize((round(scene.width * scale), round(scene.height * scale)), Image.LANCZOS)
+
     image = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
     tile = blank()
     ImageDraw.Draw(tile).rounded_rectangle((28, 28, 996, 996), radius=150, fill=255)
-    ink(image, tile, RED)
+    ink(image, tile, GREEN)
+    image.alpha_composite(scene, ((BIG - scene.width) // 2, (BIG - scene.height) // 2))
+    return image
 
+
+def draw_bell(detailed):
+    image = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
     outline = 18 if detailed else 40
     dome = dome_outline()
     base = rectangle_outline(BASE)
@@ -100,10 +125,10 @@ def draw(detailed):
         # A shine on the dome, and sound rings either side of the button.
         pen.arc((300, 456, 520, 676), start=200, end=245, fill=INK, width=16)
         cx, cy = 512, 288
-        for radius in (118, 176):
+        for radius, sweep in ((112, 24), (168, 22), (226, 18)):
             box = (cx - radius, cy - radius, cx + radius, cy + radius)
-            pen.arc(box, start=158, end=202, fill=INK, width=18)
-            pen.arc(box, start=-22, end=22, fill=INK, width=18)
+            pen.arc(box, start=180 - sweep, end=180 + sweep, fill=INK, width=18)
+            pen.arc(box, start=-sweep, end=sweep, fill=INK, width=18)
 
     return image
 

@@ -1,7 +1,6 @@
 #include "ui.h"
 
-#include <cmath>
-#include <vector>
+#include <commctrl.h>
 
 int scaled( int value, UINT dpi ) {
     return MulDiv( value, static_cast<int>( dpi ), 96 );
@@ -49,62 +48,10 @@ HWND make_window( const wchar_t *class_name, WNDPROC procedure, const wchar_t *t
     return CreateWindowExW( 0, class_name, title, style, left, top, width, height, owner, nullptr, instance, nullptr );
 }
 
-// A rounded teal square with a white S, drawn at the size asked for.
+// The bell from summon.ico (drawn by art/make_icon.py), scaled from the nearest larger frame.
 HICON summon_icon( int size ) {
-    BITMAPINFO info = {};
-    info.bmiHeader.biSize = sizeof( info.bmiHeader );
-    info.bmiHeader.biWidth = size;
-    info.bmiHeader.biHeight = -size;
-    info.bmiHeader.biPlanes = 1;
-    info.bmiHeader.biBitCount = 32;
-
-    HDC screen = GetDC( nullptr );
-    HDC canvas = CreateCompatibleDC( screen );
-    void *letter_bits = nullptr;
-    HBITMAP letter = CreateDIBSection( screen, &info, DIB_RGB_COLORS, &letter_bits, nullptr, 0 );
-    HGDIOBJ old_bitmap = SelectObject( canvas, letter );
-    HFONT font = CreateFontW( -size * 3 / 4, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, 0, 0,
-                              ANTIALIASED_QUALITY, 0, L"Segoe UI" );
-    HGDIOBJ old_font = SelectObject( canvas, font );
-    SetBkColor( canvas, RGB( 0, 0, 0 ) );
-    SetTextColor( canvas, RGB( 255, 255, 255 ) );
-    RECT area = { 0, -size / 16, size, size };
-    DrawTextW( canvas, L"S", 1, &area, DT_CENTER | DT_VCENTER | DT_SINGLELINE );
-    GdiFlush();
-
-    std::vector<DWORD> pixels( size * size );
-    const DWORD *coverage = static_cast<const DWORD *>( letter_bits );
-    double radius = size * 0.22;
-    for ( int y = 0; y < size; y++ ) {
-        for ( int x = 0; x < size; x++ ) {
-            double px = x + 0.5, py = y + 0.5;
-            double dx = std::fmax( std::fmax( radius - px, px - ( size - radius ) ), 0.0 );
-            double dy = std::fmax( std::fmax( radius - py, py - ( size - radius ) ), 0.0 );
-            double inside = std::fmin( std::fmax( radius - std::sqrt( dx * dx + dy * dy ) + 0.5, 0.0 ), 1.0 );
-            double white = ( coverage[ y * size + x ] & 0xFF ) / 255.0;
-            int red = static_cast<int>( 0x1F + ( 255 - 0x1F ) * white );
-            int green = static_cast<int>( 0x7A + ( 255 - 0x7A ) * white );
-            int blue = static_cast<int>( 0x8C + ( 255 - 0x8C ) * white );
-            int alpha = static_cast<int>( inside * 255 );
-            pixels[ y * size + x ] = ( alpha << 24 ) | ( red << 16 ) | ( green << 8 ) | blue;
-        }
-    }
-
-    void *colour_bits = nullptr;
-    HBITMAP colour = CreateDIBSection( screen, &info, DIB_RGB_COLORS, &colour_bits, nullptr, 0 );
-    memcpy( colour_bits, pixels.data(), pixels.size() * sizeof( DWORD ) );
-    HBITMAP mask = CreateBitmap( size, size, 1, 1, nullptr );
-    ICONINFO icon_info = { TRUE, 0, 0, mask, colour };
-    HICON icon = CreateIconIndirect( &icon_info );
-
-    SelectObject( canvas, old_font );
-    SelectObject( canvas, old_bitmap );
-    DeleteObject( font );
-    DeleteObject( letter );
-    DeleteObject( colour );
-    DeleteObject( mask );
-    DeleteDC( canvas );
-    ReleaseDC( nullptr, screen );
+    HICON icon = nullptr;
+    LoadIconWithScaleDown( GetModuleHandleW( nullptr ), MAKEINTRESOURCEW( 1 ), size, size, &icon );
     return icon;
 }
 

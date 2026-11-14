@@ -15,7 +15,24 @@ const IID iid_view_collection = { 0x1841C6D7, 0x4F9D, 0x42C0, { 0xAF, 0x41, 0x87
 // Only the methods used here are declared, in their vtable slots. These sit outside the
 // anonymous namespace: GCC at -O2 drops calls through pure virtual types it can see are never
 // implemented in the program.
-struct application_view : IUnknown {};
+struct application_view : IUnknown {
+    virtual HRESULT STDMETHODCALLTYPE get_iids( ULONG *, IID ** ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_runtime_class_name( void ** ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_trust_level( int * ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE set_focus() = 0;
+    virtual HRESULT STDMETHODCALLTYPE switch_to() = 0;
+    virtual HRESULT STDMETHODCALLTYPE try_invoke_back( void * ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_thumbnail_window( HWND * ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_monitor( void ** ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_visibility( int * ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE set_cloak( int, int ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_position( REFIID, void ** ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE set_position( void * ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE insert_after_window( HWND ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_extended_frame_position( RECT * ) = 0;
+    virtual HRESULT STDMETHODCALLTYPE get_app_user_model_id( PWSTR * ) = 0;
+};
+
 struct virtual_desktop : IUnknown {};
 
 struct view_collection : IUnknown {
@@ -31,6 +48,27 @@ struct desktop_manager_internal : IUnknown {
     virtual HRESULT STDMETHODCALLTYPE can_view_move_desktops( application_view *, BOOL * ) = 0;
     virtual HRESULT STDMETHODCALLTYPE get_current_desktop( virtual_desktop ** ) = 0;
 };
+
+std::wstring taskbar_app_id( HWND hwnd ) {
+    std::wstring id;
+    IServiceProvider *shell = nullptr;
+    if ( FAILED( CoCreateInstance( clsid_immersive_shell, nullptr, CLSCTX_LOCAL_SERVER, IID_IServiceProvider,
+                                   reinterpret_cast<void **>( &shell ) ) ) )
+        return id;
+    view_collection *views = nullptr;
+    application_view *view = nullptr;
+    PWSTR text = nullptr;
+    if ( SUCCEEDED( shell->QueryService( iid_view_collection, iid_view_collection, reinterpret_cast<void **>( &views ) ) ) &&
+         SUCCEEDED( views->get_view_for_hwnd( hwnd, &view ) ) && view &&
+         SUCCEEDED( view->get_app_user_model_id( &text ) ) && text ) {
+        id = text;
+    }
+    CoTaskMemFree( text );
+    if ( view ) view->Release();
+    if ( views ) views->Release();
+    shell->Release();
+    return id;
+}
 
 bool move_to_current_desktop( HWND hwnd ) {
     IServiceProvider *shell = nullptr;

@@ -1,8 +1,8 @@
-# Claude Toggle
+# Summon
 
-Tapping Right Ctrl on its own brings the Claude desktop app up on whichever virtual desktop you are on. If Claude is on another desktop, its window moves here; if Claude is not running, it starts. Tapping again while Claude is in front hides it, taskbar button and all, and Claude keeps running so Claude Code sessions carry on.
+Summon gives an app a key. Press the key and the app comes up on the virtual desktop you are on, moving its window over from another desktop or starting the app if it is closed. Press it again while the app is in front and the window hides, taskbar button and all. The app keeps running, so nothing in it is lost.
 
-A tap means pressing and releasing Right Ctrl with no other key or mouse input in between, so shortcuts such as Right Ctrl+C still work as usual.
+A key can be anything on the keyboard, or any mouse button other than left and right. Ctrl, Shift, Alt and Win count only when tapped on their own, so shortcuts such as Ctrl+C still work. Any other key you bind stops doing its usual job; binding PrtSc, for example, stops it from opening the Snipping Tool.
 
 ## Build
 
@@ -12,33 +12,31 @@ Needs MSYS2 with the UCRT64 g++ in `C:\msys64\ucrt64\bin`.
 build.cmd
 ```
 
-## Install
+## Use
 
-```
-claude_toggle.exe --install
-```
+Run `summon.exe`. A teal S appears among the tray icons by the clock; Windows may tuck it under the ^ arrow, and you can drag it out to keep it in view. Click it to open the settings.
 
-This puts a `Claude Toggle` shortcut in your Startup folder (`shell:startup`) and starts the background copy. It runs with no window; only one copy runs at a time.
+- **Add** asks for an app, chosen from the same list as the Start menu, then for its key.
+- **Change key** picks a new key for the selected app. Double-clicking a row does the same.
+- **Remove** deletes the selected row, as does the Delete key.
+- **Start with Windows** puts a shortcut in your Startup folder.
+
+Running `summon.exe` again while it is running also opens the settings. Right-click the tray icon to quit.
+
+The settings are saved in `settings.txt` next to the exe, one binding per line.
 
 ## Remove
 
 ```
-claude_toggle.exe --uninstall
+summon.exe --uninstall
 ```
 
-This stops the background copy and deletes the Startup shortcut. After that the folder can be deleted.
-
-## Other commands
-
-```
-claude_toggle.exe --stop      stops the background copy until the next sign-in
-claude_toggle.exe --toggle    does what a Right Ctrl tap does
-```
+This stops Summon and deletes its Startup shortcut. After that the folder can be deleted.
 
 ## How it works
 
-A low-level keyboard hook watches for the tap. Windows gives programs no public way to move another program's window to a different virtual desktop, so the tool uses Explorer's undocumented `IVirtualDesktopManagerInternal` interface to move Claude to the current desktop (see `src/virtual_desktops.cpp`), and brings Claude to the front only once it has arrived. Bringing it forward while it still sits on another desktop would switch you to that desktop.
+Low-level keyboard and mouse hooks watch for the bound keys. Windows has no public way to move another program's window to a different virtual desktop, so Summon uses Explorer's undocumented `IVirtualDesktopManagerInternal` interface (see `src/virtual_desktops.cpp`). It moves the window first and brings it forward only once it has arrived, since bringing forward a window that sits on another desktop switches you to that desktop.
 
-The interface IDs come from the [winvd](https://docs.rs/crate/winvd/latest/source/src/interfaces.rs) project and match Windows 11 24H2 and 25H2 (builds 26100 and 26200); this was tested on build 26200. Microsoft changes these IDs between Windows versions. If an update breaks them, the tool falls back to hiding Claude and showing it again, which leaves Claude on its old desktop, and the IDs in `virtual_desktops.cpp` need updating from winvd.
+To tell an app's windows apart from the rest, Summon asks Explorer which app the taskbar groups each window under, through the same undocumented interfaces. That catches apps such as Discord that name themselves on the process rather than the window. The program path and package name are checked as a fallback.
 
-The tool finds Claude's main window by looking for a titled `Chrome_WidgetWin_1` window owned by the Claude app in `WindowsApps`, and starts Claude through its app ID `Claude_pzs8sxrjxfjjc!Claude`.
+The interface IDs come from the [winvd](https://docs.rs/crate/winvd/latest/source/src/interfaces.rs) project and match Windows 11 24H2 and 25H2 (builds 26100 and 26200). Summon was tested on build 26200. Microsoft changes these IDs between Windows versions. If an update breaks them, windows stay on their old desktop until the IDs in `virtual_desktops.cpp` are updated from winvd.

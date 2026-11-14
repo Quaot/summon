@@ -21,9 +21,11 @@ Run these from the repo folder, with `.\` in front:
 .\tests\test.cmd      builds tests\summon_test.exe and runs every check
 ```
 
-The checks never touch the screen, keyboard or mouse. Key presses are fake hook events handed straight to the code that handles them, and windows are hidden ones the test program makes for itself. They cover the settings file, the rules for taps and swallowed keys, the choice between starting, hiding and bringing a window here, and how windows are matched to apps. One check asks Explorer whether its virtual desktop interfaces still answer, so it fails after a Windows update that changes them. Another expects Claude in the Start menu's list, so it fails on a machine without Claude.
+`docs\spec.md` says what Summon should do. The checks in `tests\test_main.cpp` are written from that file alone, by someone who has not read the code, so they test the intended behaviour and not whatever the code happens to do. When a check fails, fix the code; change a check only when it contradicts the spec.
 
-For any change, write the check first in `tests\test_main.cpp`, see it fail, then change the code until every check passes.
+For a new feature or a change in behaviour, update the spec first, have the new checks written from it without looking at `src\`, see them fail, and then change the code until every check passes.
+
+The checks never touch the screen, keyboard or mouse. Key presses are fake hook events handed straight to the code that handles them, and windows are hidden ones the test program makes for itself. One check asks Explorer whether its virtual desktop interfaces still answer, so it fails after a Windows update that changes them. Another expects Claude in the Start menu's list, so it fails on a machine without Claude.
 
 ## Use
 
